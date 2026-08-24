@@ -16,6 +16,50 @@ Proyek Flutter untuk membandingkan dua paket Speech-to-Text (STT) secara berdamp
 
 ---
 
+## ✅ Temuan & Rekomendasi
+
+**Engine B (`flutter_speech_to_text`) dipilih untuk produksi** karena alasan berikut:
+
+### Engine A gagal di device tanpa language pack
+
+`speech_to_text` **wajib memvalidasi locale** dari daftar resmi yang dilaporkan device sebelum bisa mulai merekam:
+
+```dart
+// Engine A — harus cari locale dulu dari daftar device
+final locales = await _speech.locales(); // ambil daftar resmi
+for (final l in locales) {
+  if (id == 'id_id' || id == 'in_id' ...) {
+    _resolvedLocaleId = l.localeId; // baru boleh dipakai
+  }
+}
+// Kalau tidak ketemu → error:
+// "Locale id_ID tidak ditemukan di device.
+//  Install language pack Indonesia lewat Settings > Google App > Voice."
+```
+
+Artinya: kalau di **daftar resmi device** tidak ada entri untuk Bahasa Indonesia (misalnya language pack belum terinstall atau belum terdaftar di Google App), Engine A langsung error seperti yang terlihat di screenshot di atas.
+
+### Engine B langsung jalan tanpa validasi
+
+`flutter_speech_to_text` meneruskan kode bahasa **langsung ke native Speech Recognizer** Android/iOS tanpa validasi terlebih dahulu:
+
+```dart
+// Engine B — langsung lempar ke OS, OS yang handle
+await _speech.start(language: 'id-ID'); // langsung jalan ✅
+```
+
+Android modern cukup pintar — ia tahu `id-ID` adalah Bahasa Indonesia dan bisa menyesuaikan model pengenalan suaranya secara dinamis, bahkan tanpa language pack yang terinstall secara eksplisit.
+
+| | Engine A (`speech_to_text`) | Engine B (`flutter_speech_to_text`) |
+|---|---|---|
+| **Validasi locale** | ❌ Wajib ada di daftar device | ✅ Tidak perlu, langsung ke OS |
+| **Tanpa language pack** | ❌ Error, tidak bisa jalan | ✅ Tetap jalan |
+| **Kemudahan setup** | Lebih kompleks | Lebih sederhana |
+
+> **Kesimpulan:** Untuk aplikasi yang menyasar pengguna umum dengan konfigurasi device yang beragam, Engine B jauh lebih robust karena tidak bergantung pada keberadaan language pack di device pengguna.
+
+---
+
 ## Perbedaan `speech_to_text` vs `flutter_speech_to_text`
 
 ### Sekilas
